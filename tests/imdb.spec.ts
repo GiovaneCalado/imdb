@@ -16,7 +16,18 @@ test.describe('Validate IMDB 100 best movies API', () => {
     const response = await request.get('')
     const responseBody = await response.json()
     await client.connect()
-    const result = await client.query(`select * from imdb_top_1000 where series_title = 'The Shawshank Redemption'`)
-    console.log(result.rows)
+    for (const movie of responseBody){
+      const movieData = await client.query(`SELECT * FROM imdb_top_1000 WHERE series_title = $1`, [movie.title])
+      if (movieData.rows.length === 0) {
+        continue;
+      }
+      console.log(movie.title)
+      expect(movieData.rows.length).toBe(1)
+      expect(movieData.rows[0].series_title).toBe(movie.title)
+      expect(movieData.rows[0].released_year).toBe(movie.year)
+      expect(movieData.rows[0].genre.replace(/\s/g, "")).toBe(movie.genre.toString().replace(/\s/g, ""))
+      expect(movie.rating).toContain(movieData.rows[0].imdb_rating)
+    }
+    await client.end()
   });
 });
